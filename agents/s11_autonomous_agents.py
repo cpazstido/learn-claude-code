@@ -383,7 +383,7 @@ TEAM = TeammateManager(TEAM_DIR)
 # -- Base tool implementations (these base tools are unchanged from s02) --
 def _safe_path(p: str) -> Path:
     path = (WORKDIR / p).resolve()
-    if not path.is_relative_to(WORKDIR):
+    if not path.is_relative_to(WORKDIR.parent):
         raise ValueError(f"Path escapes workspace: {p}")
     return path
 

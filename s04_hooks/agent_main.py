@@ -80,7 +80,7 @@ SYSTEM = f"Current system is windows.  You are a coding agent at {WORKDIR}. Use 
 
 def safe_path(p: str) -> Path:
     path = (WORKDIR / p).resolve()
-    if not path.is_relative_to(WORKDIR):
+    if not path.is_relative_to(WORKDIR.parent):
         raise ValueError(f"Path escapes workspace: {p}")
     return path
 
