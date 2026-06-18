@@ -128,7 +128,7 @@ context は現在の実行時状態の実際の状態を反映：
 def update_context(context: dict, messages: list) -> dict:
     memories = ""
     if MEMORY_INDEX.exists():
-        content = MEMORY_INDEX.read_text().strip()
+        content = MEMORY_INDEX.read_text(encoding="utf-8").strip()
         if content:
             memories = content
     return {
@@ -174,7 +174,7 @@ def agent_loop(messages: list, context: dict):
 
 ```sh
 cd learn-claude-code
-python s10_system_prompt/code.py
+python s10_system_prompt/agent_main.py
 ```
 
 観察のポイント：
@@ -187,7 +187,7 @@ python s10_system_prompt/code.py
 
 1. `Read the file README.md`（常にロードされる 3 つのセクションを観察）
 2. `Create a file called .memory/MEMORY.md with content "- [test](test.md) — test memory"`（記憶インデックスを書き込み）
-3. `Read the file code.py`（memory セクションが表示されるか観察）
+3. `Read the file agent_main.py`（memory セクションが表示されるか観察）
 
 ---
 

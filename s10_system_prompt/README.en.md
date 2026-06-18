@@ -128,7 +128,7 @@ Context reflects the actual runtime state:
 def update_context(context: dict, messages: list) -> dict:
     memories = ""
     if MEMORY_INDEX.exists():
-        content = MEMORY_INDEX.read_text().strip()
+        content = MEMORY_INDEX.read_text(encoding="utf-8").strip()
         if content:
             memories = content
     return {
@@ -174,7 +174,7 @@ At the start of each loop iteration, get the system prompt. If context changed, 
 
 ```sh
 cd learn-claude-code
-python s10_system_prompt/code.py
+python s10_system_prompt/agent_main.py
 ```
 
 What to watch for:
@@ -187,7 +187,7 @@ Try these prompts:
 
 1. `Read the file README.md` (observe the three always-loaded sections)
 2. `Create a file called .memory/MEMORY.md with content "- [test](test.md) — test memory"` (write a memory index)
-3. `Read the file code.py` (observe whether the memory section appears)
+3. `Read the file agent_main.py` (observe whether the memory section appears)
 
 ---
 

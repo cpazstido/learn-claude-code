@@ -2,7 +2,7 @@
 """
 s02: Tool Use — 在 s01 基础上新增 4 个工具 + 分发映射。
 
-运行: python s02_tool_use/code.py
+运行: python s02_tool_use/agent_main.py
 需要: pip install anthropic python-dotenv + .env 中配置 ANTHROPIC_API_KEY
 
 本文件 = s01 的全部代码 + 以下新增:
@@ -36,7 +36,7 @@ WORKDIR = Path.cwd()
 client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
 MODEL = os.environ["MODEL_ID"]
 
-SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks. Act, don't explain."
+SYSTEM = f"Current system is windows.  You are a coding agent at {WORKDIR}. Use tools to solve tasks. Act, don't explain."
 
 
 # ═══════════════════════════════════════════════════════════
@@ -49,8 +49,9 @@ def run_bash(command: str) -> str:
         return "Error: Dangerous command blocked"
     try:
         r = subprocess.run(command, shell=True, cwd=WORKDIR,
-                           capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=120)
+                           encoding="utf-8",  # 关键：强制用utf8解码
+                           errors="replace",  # 无法解码的字符替换为�，防止报错
+                           capture_output=True, text=True, timeout=120)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
     except subprocess.TimeoutExpired:
@@ -72,7 +73,7 @@ def safe_path(p: str) -> Path:
 
 def run_read(path: str, limit: int | None = None) -> str:
     try:
-        lines = safe_path(path).read_text().splitlines()
+        lines = safe_path(path).read_text(encoding="utf-8").splitlines()
         if limit and limit < len(lines):
             lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
         return "\n".join(lines)
@@ -93,7 +94,7 @@ def run_write(path: str, content: str) -> str:
 def run_edit(path: str, old_text: str, new_text: str) -> str:
     try:
         file_path = safe_path(path)
-        text = file_path.read_text()
+        text = file_path.read_text(encoding="utf-8")
         if old_text not in text:
             return f"Error: text not found in {path}"
         file_path.write_text(text.replace(old_text, new_text, 1))

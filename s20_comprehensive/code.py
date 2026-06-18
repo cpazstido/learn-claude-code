@@ -2,7 +2,7 @@
 """
 s20: Comprehensive Agent — all teaching components in one loop.
 
-Run:  python s20_comprehensive/code.py
+Run:  python s20_comprehensive/agent_main.py
 Need: pip install anthropic python-dotenv pyyaml + .env with ANTHROPIC_API_KEY
 
 This final chapter intentionally puts the earlier teaching mechanisms back
@@ -109,11 +109,11 @@ def save_task(task: Task):
 
 
 def load_task(task_id: str) -> Task:
-    return Task(**json.loads(_task_path(task_id).read_text()))
+    return Task(**json.loads(_task_path(task_id).read_text(encoding="utf-8")))
 
 
 def list_tasks() -> list[Task]:
-    return [Task(**json.loads(p.read_text()))
+    return [Task(**json.loads(p.read_text(encoding="utf-8")))
             for p in sorted(TASKS_DIR.glob("task_*.json"))]
 
 
@@ -193,6 +193,8 @@ def validate_worktree_name(name: str) -> str | None:
 def run_git(args: list[str]) -> tuple[bool, str]:
     try:
         r = subprocess.run(["git"] + args, cwd=WORKDIR,
+                           encoding="utf-8",  # 关键：强制用utf8解码
+                           errors="replace",  # 无法解码的字符替换为�，防止报错
                            capture_output=True, text=True, timeout=30)
         out = (r.stdout + r.stderr).strip()
         return r.returncode == 0, out[:5000] if out else "(no output)"
@@ -241,9 +243,13 @@ def bind_task_to_worktree(task_id: str, worktree_name: str):
 def _count_worktree_changes(path: Path) -> tuple[int, int]:
     try:
         r1 = subprocess.run(["git", "status", "--porcelain"],
+                            encoding="utf-8",  # 关键：强制用utf8解码
+                            errors="replace",  # 无法解码的字符替换为�，防止报错
                             cwd=path, capture_output=True, text=True, timeout=10)
         files = len([l for l in r1.stdout.strip().splitlines() if l.strip()])
         r2 = subprocess.run(["git", "log", "@{push}..HEAD", "--oneline"],
+                            encoding="utf-8",  # 关键：强制用utf8解码
+                            errors="replace",  # 无法解码的字符替换为�，防止报错
                             cwd=path, capture_output=True, text=True, timeout=10)
         commits = len([l for l in r2.stdout.strip().splitlines() if l.strip()])
         return files, commits
@@ -310,7 +316,7 @@ def scan_skills():
         manifest = directory / "SKILL.md"
         if not manifest.exists():
             continue
-        raw = manifest.read_text()
+        raw = manifest.read_text(encoding="utf-8")
         meta, _ = _parse_frontmatter(raw)
         name = meta.get("name", directory.name)
         desc = meta.get("description", raw.split("\n")[0].lstrip("#").strip())
@@ -391,6 +397,8 @@ def run_bash(command: str, cwd: Path = None,
     # run_in_background is consumed by the dispatcher; direct execution ignores it.
     try:
         r = subprocess.run(command, shell=True, cwd=cwd or WORKDIR,
+                           encoding="utf-8",  # 关键：强制用utf8解码
+                           errors="replace",  # 无法解码的字符替换为�，防止报错
                            capture_output=True, text=True, timeout=120)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
@@ -401,7 +409,7 @@ def run_bash(command: str, cwd: Path = None,
 def run_read(path: str, limit: int | None = None,
              offset: int = 0, cwd: Path = None) -> str:
     try:
-        lines = safe_path(path, cwd).read_text().splitlines()
+        lines = safe_path(path, cwd).read_text(encoding="utf-8").splitlines()
         offset = max(int(offset or 0), 0)
         limit = int(limit) if limit is not None else None
         lines = lines[offset:]
@@ -426,7 +434,7 @@ def run_edit(path: str, old_text: str, new_text: str,
              cwd: Path = None) -> str:
     try:
         fp = safe_path(path, cwd)
-        text = fp.read_text()
+        text = fp.read_text(encoding="utf-8")
         if old_text not in text:
             return f"Error: text not found in {path}"
         fp.write_text(text.replace(old_text, new_text, 1))
@@ -511,7 +519,7 @@ class MessageBus:
         inbox = MAILBOX_DIR / f"{agent}.jsonl"
         if not inbox.exists():
             return []
-        msgs = [json.loads(line) for line in inbox.read_text().splitlines()
+        msgs = [json.loads(line) for line in inbox.read_text(encoding="utf-8").splitlines()
                 if line.strip()]
         inbox.unlink()
         return msgs
@@ -574,7 +582,7 @@ IDLE_TIMEOUT = 60
 def scan_unclaimed_tasks() -> list[dict]:
     unclaimed = []
     for f in sorted(TASKS_DIR.glob("task_*.json")):
-        task = json.loads(f.read_text())
+        task = json.loads(f.read_text(encoding="utf-8"))
         if (task.get("status") == "pending"
                 and not task.get("owner")
                 and can_start(task["id"])):
@@ -962,7 +970,7 @@ register_hook("Stop", stop_hook)
 # ── Subagent Tool ──
 
 SUB_SYSTEM = (
-    f"You are a coding subagent at {WORKDIR}. "
+    f"Current system is windows.  You are a coding subagent at {WORKDIR}. "
     "Complete the task, then return a concise final summary. "
     "Do not spawn more agents."
 )
@@ -1440,7 +1448,7 @@ def load_durable_jobs():
     if not DURABLE_PATH.exists():
         return
     try:
-        for item in json.loads(DURABLE_PATH.read_text()):
+        for item in json.loads(DURABLE_PATH.read_text(encoding="utf-8")):
             job = CronJob(**item)
             if not validate_cron(job.cron):
                 scheduled_jobs[job.id] = job
@@ -1899,7 +1907,7 @@ MEMORY_INDEX = MEMORY_DIR / "MEMORY.md"
 def update_context(context: dict, messages: list) -> dict:
     memories = ""
     if MEMORY_INDEX.exists():
-        memories = MEMORY_INDEX.read_text()[:2000]
+        memories = MEMORY_INDEX.read_text(encoding="utf-8")[:2000]
     return {
         "memories": memories,
         "connected_mcp": list(mcp_clients.keys()),

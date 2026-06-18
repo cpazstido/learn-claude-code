@@ -80,7 +80,7 @@ Find tasks that are pending, unowned, with all dependencies completed (`can_star
 def scan_unclaimed_tasks() -> list[dict]:
     unclaimed = []
     for f in sorted(TASKS_DIR.glob("task_*.json")):
-        task = json.loads(f.read_text())
+        task = json.loads(f.read_text(encoding="utf-8"))
         if (task.get("status") == "pending"
                 and not task.get("owner")
                 and can_start(task["id"])):
@@ -211,7 +211,7 @@ Two teammates claim and work in parallel. Lead only creates tasks and spawns tea
 
 ```sh
 cd learn-claude-code
-python s17_autonomous_agents/code.py
+python s17_autonomous_agents/agent_main.py
 ```
 
 Try this prompt:

@@ -2,7 +2,7 @@
 """
 s15: Agent Teams — MessageBus + spawn_teammate_thread + inbox injection.
 
-Run:  python s15_agent_teams/code.py
+Run:  python s15_agent_teams/agent_main.py
 Need: pip install anthropic python-dotenv + .env with ANTHROPIC_API_KEY
 
 Changes from s14:
@@ -81,11 +81,11 @@ def save_task(task: Task):
 
 
 def load_task(task_id: str) -> Task:
-    return Task(**json.loads(_task_path(task_id).read_text()))
+    return Task(**json.loads(_task_path(task_id).read_text(encoding="utf-8")))
 
 
 def list_tasks() -> list[Task]:
-    return [Task(**json.loads(p.read_text()))
+    return [Task(**json.loads(p.read_text(encoding="utf-8")))
             for p in sorted(TASKS_DIR.glob("task_*.json"))]
 
 
@@ -187,6 +187,8 @@ def run_bash(command: str, run_in_background: bool = False) -> str:
     # run_in_background is handled by agent_loop dispatch, not here
     try:
         r = subprocess.run(command, shell=True, cwd=WORKDIR,
+                           encoding="utf-8",  # 关键：强制用utf8解码
+                           errors="replace",  # 无法解码的字符替换为�，防止报错
                            capture_output=True, text=True, timeout=120)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
@@ -196,7 +198,7 @@ def run_bash(command: str, run_in_background: bool = False) -> str:
 
 def run_read(path: str, limit: int | None = None) -> str:
     try:
-        lines = safe_path(path).read_text().splitlines()
+        lines = safe_path(path).read_text(encoding="utf-8").splitlines()
         if limit and limit < len(lines):
             lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
         return "\n".join(lines)
@@ -470,7 +472,7 @@ def load_durable_jobs():
     if not DURABLE_PATH.exists():
         return
     try:
-        jobs = json.loads(DURABLE_PATH.read_text())
+        jobs = json.loads(DURABLE_PATH.read_text(encoding="utf-8"))
         for j in jobs:
             job = CronJob(**j)
             err = validate_cron(job.cron)
@@ -612,7 +614,7 @@ class MessageBus:
         inbox = MAILBOX_DIR / f"{agent}.jsonl"
         if not inbox.exists():
             return []
-        msgs = [json.loads(line) for line in inbox.read_text().splitlines()
+        msgs = [json.loads(line) for line in inbox.read_text(encoding="utf-8").splitlines()
                 if line.strip()]
         inbox.unlink()  # consume: read + delete
         return msgs
@@ -829,7 +831,7 @@ def update_context(context: dict, messages: list) -> dict:
     """Derive context from real state."""
     memories = ""
     if MEMORY_INDEX.exists():
-        content = MEMORY_INDEX.read_text().strip()
+        content = MEMORY_INDEX.read_text(encoding="utf-8").strip()
         if content:
             memories = content
     return {

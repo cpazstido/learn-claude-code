@@ -68,7 +68,7 @@ def _scan_skills():
             continue
         manifest = d / "SKILL.md"
         if manifest.exists():
-            raw = manifest.read_text()
+            raw = manifest.read_text(encoding="utf-8")
             meta, body = _parse_frontmatter(raw)
             name = meta.get("name", d.name)
             desc = meta.get("description", raw.split("\n")[0].lstrip("#").strip())
@@ -120,7 +120,7 @@ def load_skill(name: str) -> str:
 
 ```sh
 cd learn-claude-code
-python s07_skill_loading/code.py
+python s07_skill_loading/agent_main.py
 ```
 
 以下のプロンプトを試してみよう：

@@ -24,7 +24,7 @@ Changes from s05:
   Subagent cannot spawn sub-subagents (no task tool in sub_tools).
   Main loop unchanged: task auto-dispatches via TOOL_HANDLERS.
 
-Run: python s06_subagent/code.py
+Run: python s06_subagent/agent_main.py
 Needs: pip install anthropic python-dotenv + ANTHROPIC_API_KEY in .env
 """
 
@@ -44,19 +44,19 @@ load_dotenv(override=True)
 if os.getenv("ANTHROPIC_BASE_URL"):
     os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
 
-WORKDIR = Path.cwd()
+WORKDIR = Path.cwd().parent
 client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
 MODEL = os.environ["MODEL_ID"]
 CURRENT_TODOS: list[dict] = []
 
 SYSTEM = (
-    f"You are a coding agent at {WORKDIR}. "
+    f"Current system is windows.  You are a coding agent at {WORKDIR}. "
     "For complex sub-problems, use the task tool to spawn a subagent."
 )
 
 # s06: subagent gets its own system prompt — no task, no recursion
 SUB_SYSTEM = (
-    f"You are a coding agent at {WORKDIR}. "
+    f"Current system is windows.  You are a coding agent at {WORKDIR}. "
     "Complete the task you were given, then return a concise summary. "
     "Do not delegate further."
 )
@@ -75,6 +75,8 @@ def safe_path(p: str) -> Path:
 def run_bash(command: str) -> str:
     try:
         r = subprocess.run(command, shell=True, cwd=WORKDIR,
+                           encoding="utf-8",  # 关键：强制用utf8解码
+                           errors="replace",  # 无法解码的字符替换为�，防止报错
                            capture_output=True, text=True, timeout=120)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
@@ -83,7 +85,7 @@ def run_bash(command: str) -> str:
 
 def run_read(path: str, limit: int | None = None) -> str:
     try:
-        lines = safe_path(path).read_text().splitlines()
+        lines = safe_path(path).read_text(encoding="utf-8", errors="replace").splitlines()
         if limit and limit < len(lines):
             lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
         return "\n".join(lines)
@@ -102,7 +104,7 @@ def run_write(path: str, content: str) -> str:
 def run_edit(path: str, old_text: str, new_text: str) -> str:
     try:
         file_path = safe_path(path)
-        text = file_path.read_text()
+        text = file_path.read_text(encoding="utf-8")
         if old_text not in text:
             return f"Error: text not found in {path}"
         file_path.write_text(text.replace(old_text, new_text, 1))

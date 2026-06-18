@@ -177,7 +177,7 @@ def agent_loop(messages, context):
 
 ```sh
 cd learn-claude-code
-python s11_error_recovery/code.py
+python s11_error_recovery/agent_main.py
 ```
 
 试试这些 prompt：

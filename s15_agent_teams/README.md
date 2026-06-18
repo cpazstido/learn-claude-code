@@ -57,7 +57,7 @@ class MessageBus:
         inbox = MAILBOX_DIR / f"{agent}.jsonl"
         if not inbox.exists():
             return []
-        msgs = [json.loads(line) for line in inbox.read_text().splitlines()]
+        msgs = [json.loads(line) for line in inbox.read_text(encoding="utf-8").splitlines()]
         inbox.unlink()  # 消费式：读完删除
         return msgs
 ```
@@ -155,7 +155,7 @@ if inbox:
 
 ```sh
 cd learn-claude-code
-python s15_agent_teams/code.py
+python s15_agent_teams/agent_main.py
 ```
 
 试试这些 prompt：

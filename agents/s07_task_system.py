@@ -40,7 +40,7 @@ client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
 MODEL = os.environ["MODEL_ID"]
 TASKS_DIR = WORKDIR / ".tasks"
 
-SYSTEM = f"You are a coding agent at {WORKDIR}. Use task tools to plan and track work."
+SYSTEM = f"Current system is windows.  You are a coding agent at {WORKDIR}. Use task tools to plan and track work."
 
 
 # -- TaskManager: CRUD with dependency graph, persisted as JSON files --
@@ -58,7 +58,7 @@ class TaskManager:
         path = self.dir / f"task_{task_id}.json"
         if not path.exists():
             raise ValueError(f"Task {task_id} not found")
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
 
     def _save(self, task: dict):
         path = self.dir / f"task_{task['id']}.json"
@@ -95,7 +95,7 @@ class TaskManager:
     def _clear_dependency(self, completed_id: int):
         """Remove completed_id from all other tasks' blockedBy lists."""
         for f in self.dir.glob("task_*.json"):
-            task = json.loads(f.read_text())
+            task = json.loads(f.read_text(encoding="utf-8"))
             if completed_id in task.get("blockedBy", []):
                 task["blockedBy"].remove(completed_id)
                 self._save(task)
@@ -107,7 +107,7 @@ class TaskManager:
             key=lambda f: int(f.stem.split("_")[1])
         )
         for f in files:
-            tasks.append(json.loads(f.read_text()))
+            tasks.append(json.loads(f.read_text(encoding="utf-8")))
         if not tasks:
             return "No tasks."
         lines = []
@@ -134,6 +134,8 @@ def run_bash(command: str) -> str:
         return "Error: Dangerous command blocked"
     try:
         r = subprocess.run(command, shell=True, cwd=WORKDIR,
+                           encoding="utf-8",  # 关键：强制用utf8解码
+                           errors="replace",  # 无法解码的字符替换为�，防止报错
                            capture_output=True, text=True, timeout=120)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
@@ -142,7 +144,7 @@ def run_bash(command: str) -> str:
 
 def run_read(path: str, limit: int = None) -> str:
     try:
-        lines = safe_path(path).read_text().splitlines()
+        lines = safe_path(path).read_text(encoding="utf-8").splitlines()
         if limit and limit < len(lines):
             lines = lines[:limit] + [f"... ({len(lines) - limit} more)"]
         return "\n".join(lines)[:50000]
@@ -161,7 +163,7 @@ def run_write(path: str, content: str) -> str:
 def run_edit(path: str, old_text: str, new_text: str) -> str:
     try:
         fp = safe_path(path)
-        c = fp.read_text()
+        c = fp.read_text(encoding="utf-8")
         if old_text not in c:
             return f"Error: Text not found in {path}"
         fp.write_text(c.replace(old_text, new_text, 1))

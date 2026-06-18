@@ -23,7 +23,7 @@ Only one line added to the agent loop:
 
 Builds on s02 (multi-tool). Usage:
 
-    python s03_permission/code.py
+    python s03_permission/agent_main.py
     Needs: pip install anthropic python-dotenv + ANTHROPIC_API_KEY in .env
 """
 
@@ -50,7 +50,7 @@ WORKDIR = Path.cwd()
 client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
 MODEL = os.environ["MODEL_ID"]
 
-SYSTEM = f"You are a coding agent at {WORKDIR}. All destructive operations require user approval."
+SYSTEM = f"Current system is windows.  You are a coding agent at {WORKDIR}. All destructive operations require user approval."
 
 
 # ═══════════════════════════════════════════════════════════
@@ -67,6 +67,8 @@ def safe_path(p: str) -> Path:
 def run_bash(command: str) -> str:
     try:
         r = subprocess.run(command, shell=True, cwd=WORKDIR,
+                           encoding="utf-8",  # 关键：强制用utf8解码
+                           errors="replace",  # 无法解码的字符替换为�，防止报错
                            capture_output=True, text=True, timeout=120)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
@@ -76,7 +78,7 @@ def run_bash(command: str) -> str:
 
 def run_read(path: str, limit: int | None = None) -> str:
     try:
-        lines = safe_path(path).read_text().splitlines()
+        lines = safe_path(path).read_text(encoding="utf-8").splitlines()
         if limit and limit < len(lines):
             lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
         return "\n".join(lines)
@@ -97,7 +99,7 @@ def run_write(path: str, content: str) -> str:
 def run_edit(path: str, old_text: str, new_text: str) -> str:
     try:
         file_path = safe_path(path)
-        text = file_path.read_text()
+        text = file_path.read_text(encoding="utf-8")
         if old_text not in text:
             return f"Error: text not found in {path}"
         file_path.write_text(text.replace(old_text, new_text, 1))

@@ -2,7 +2,7 @@
 """
 s17: Autonomous Agents — idle poll + auto-claim + WORK/IDLE lifecycle.
 
-Run:  python s17_autonomous_agents/code.py
+Run:  python s17_autonomous_agents/agent_main.py
 Need: pip install anthropic python-dotenv + .env with ANTHROPIC_API_KEY
 
 Changes from s16:
@@ -78,11 +78,11 @@ def save_task(task: Task):
 
 
 def load_task(task_id: str) -> Task:
-    return Task(**json.loads(_task_path(task_id).read_text()))
+    return Task(**json.loads(_task_path(task_id).read_text(encoding="utf-8")))
 
 
 def list_tasks() -> list[Task]:
-    return [Task(**json.loads(p.read_text()))
+    return [Task(**json.loads(p.read_text(encoding="utf-8")))
             for p in sorted(TASKS_DIR.glob("task_*.json"))]
 
 
@@ -183,6 +183,8 @@ def safe_path(p: str) -> Path:
 def run_bash(command: str) -> str:
     try:
         r = subprocess.run(command, shell=True, cwd=WORKDIR,
+                           encoding="utf-8",  # 关键：强制用utf8解码
+                           errors="replace",  # 无法解码的字符替换为�，防止报错
                            capture_output=True, text=True, timeout=120)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
@@ -192,7 +194,7 @@ def run_bash(command: str) -> str:
 
 def run_read(path: str, limit: int | None = None) -> str:
     try:
-        lines = safe_path(path).read_text().splitlines()
+        lines = safe_path(path).read_text(encoding="utf-8").splitlines()
         if limit and limit < len(lines):
             lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
         return "\n".join(lines)
@@ -232,7 +234,7 @@ class MessageBus:
         inbox = MAILBOX_DIR / f"{agent}.jsonl"
         if not inbox.exists():
             return []
-        msgs = [json.loads(line) for line in inbox.read_text().splitlines()
+        msgs = [json.loads(line) for line in inbox.read_text(encoding="utf-8").splitlines()
                 if line.strip()]
         inbox.unlink()
         return msgs
@@ -293,7 +295,7 @@ def scan_unclaimed_tasks() -> list[dict]:
     """Find pending, unowned tasks with all dependencies completed."""
     unclaimed = []
     for f in sorted(TASKS_DIR.glob("task_*.json")):
-        task = json.loads(f.read_text())
+        task = json.loads(f.read_text(encoding="utf-8"))
         if (task.get("status") == "pending"
                 and not task.get("owner")
                 and can_start(task["id"])):
@@ -745,7 +747,7 @@ MEMORY_INDEX = MEMORY_DIR / "MEMORY.md"
 def update_context(context: dict, messages: list) -> dict:
     memories = ""
     if MEMORY_INDEX.exists():
-        memories = MEMORY_INDEX.read_text()[:2000]
+        memories = MEMORY_INDEX.read_text(encoding="utf-8")[:2000]
     return {"memories": memories}
 
 
